@@ -1,0 +1,26 @@
+---
+title: "dlyr102data"
+format: html
+editor: visual
+---
+
+```{r}
+#| echo: false
+#| message: false
+here::i_am("dplyr-102.Rproj")
+library(here)
+library(vroom)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+```
+
+## 
+```{r}
+#| echo: false
+#| message: false
+clients <- vroom("data/client.csv")
+accounts <- vroom("data/account.csv")
+disp <- vroom("data/disp.csv")
+```
+
