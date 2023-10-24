@@ -20,13 +20,13 @@ library(ggplot2)
 ```{r}
 #| echo: false
 #| message: false
-client <- vroom("data/client.csv")
+clients <- vroom("data/client.csv")
 accounts <- vroom("data/account.csv")
 disp <- vroom("data/disp.csv")
 ```
 
 ## data tables
-A collecton of joing fuinction
+A collection of joining functions of the form `*_join`
 
 ### Clear data
 ```{r}
@@ -34,22 +34,27 @@ da <- inner_join(accounts, disp)
 ```
 
 ```{r}
-cda <- inner_join(client, da, by=join_by(client_id, suffix= "_home", "_bank"))
+cda <- inner_join(clients, da, by=join_by(client_id), suffix = c("_home", "_bank"))
 ```
 ```{r}
-home_diff_bank <- cda |> filter(district_id_home |> district_id_bank) |> nrow()
+home_diff_bank <- cda |> filter(district_id_home != district_id_bank) |> nrow()
 ```
 
 We observe that `r home_diff_bank` clients have a bank to another
 
 ```{r}
-cda |> group_by(accounts_id) |> 
-  distinct(discrict_id_home) |> 
+cda |>
+  group_by(account_id) |> 
+  distinct(district_id_home) |> 
   summarise(N=n()) |> 
   filter(N>1)
 ```
 
 ### Gender gap
+```{r}
+clients |> count(gender)
+```
+
 ```{r}
 clients |>
   ggplot(aes(y=gender)) +
@@ -58,11 +63,12 @@ clients |>
 
 ```{r}
 cda |>
-  count(gender, type)
+  count(gender, type) |>
+  group_by(gender) |>
+  mutate(freq=n/sum(n)) |>
+  select(-n) |> 
+  ungroup() |>
+  pivot_wider(values_from = freq, names_from = type)
 ```
 
-```{r}
-#select(test(cda) |> pull(gender),
-       cda |)
-```
 
