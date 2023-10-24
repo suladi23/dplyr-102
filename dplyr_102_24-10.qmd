@@ -15,7 +15,7 @@ library(tidyr)
 library(ggplot2)
 ```
 
-## 
+### Financial data analasys
 ```{r}
 #| echo: false
 #| message: false
