@@ -172,5 +172,109 @@ ggplot(loan, aes(y=active, fill=status)) +
   geom_bar(position="fill")
 ```
 
+## Combined analysis
+
+```{r}
+loan_cda <- loan |>
+  inner_join(cda, by=join_by(account_id), suffix=c("_loan", "_account"))
+```
+
+```{r}
+loan_cda |>
+  group_by(loan_id) |>
+  summarise(nb_clients = n())
+```
+
+```{r}
+loan_cda |>
+  group_by(loan_id) |>
+  mutate(nb_clients = n()) |>
+  slice_head() |>
+  select(-client_id, -gender, -birth_date) |>
+  ungroup() |>
+  ggplot(aes(y=nb_clients, fill=default)) +
+  geom_bar()
+```
+
+We see that when we have two persons owning the account we have no dafaults.
+
+```{r}
+client_no_loans <- cda |> 
+  anti_join(loan, by=join_by(account_id))
+client_with_loans <- cda |> 
+  semi_join(loan, by=join_by(account_id))
+```
+We find clients who do not have a loan, anti_join picks the values in x that do not have a match in y, with semijoin I take the ones that have a match, with inner all together
+
+```{r}
+(client_no_loans |>
+  group_by(account_id) |>
+  summarise(nb_clients=n()) |>
+  ggplot(aes(y=nb_clients)) +
+  geom_bar() + ggtitle("Without loan")) /
+(client_with_loans |>
+  group_by(account_id) |>
+  summarise(nb_clients=n()) |>
+  ggplot(aes(y=nb_clients)) +
+  geom_bar() + ggtitle("With loan"))
+```
+
+```{r}
+merged_clients <-
+  bind_rows(
+    with = client_with_loans,
+    without = client_no_loans,
+    .id = "loan")
+```
+
+```{r}
+merged_clients |>
+  group_by(account_id) |>
+  mutate(nb_clients =n()) |>
+  slice_head() |>
+  ungroup() |>
+  ggplot(aes(y=nb_clients, fill=loan)) +
+  geom_bar()
+```
+There's difference into counts so we need fill:
+```{r}
+merged_clients |>
+  group_by(account_id) |>
+  mutate(nb_clients =n()) |>
+  slice_head() |>
+  ungroup() |>
+  ggplot(aes(y=nb_clients, fill=loan)) +
+  geom_bar(position="fill")
+```
+
+```{r}
+accounts_loan <- merged_clients |>
+  group_by(account_id) |>
+  mutate(nb_clients =n()) |>
+  slice_head() |>
+  ungroup()
+chisq.test(accounts_loan |> pull(loan),
+           accounts_loan |> pull(nb_clients))
+```
+### Alternative solution
+
+```{r}
+persons_per_account <- cda |>
+  count(account_id)
+loan |> inner_join(persons_per_account, by=join_by(account_id))
+```
+
+```{r}
+loan_cda |>
+  group_by(default, loan_id) |>
+  summarise(n=n(), .groups="drop")
+```
+
+```{r}
+cda |> 
+  left_join(loan|>select(account_id, default), by=join_by(account_id)) |>
+  mutate(loan = if_else(is.na(default), "Without", "With"))
+#left is "cda" and join it with loan on the "right"
+```
 
 
