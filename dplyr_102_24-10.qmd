@@ -14,9 +14,11 @@ library(vroom)
 library(dplyr)
 library(tidyr)
 library(ggplot2)
+library(patchwork)
 ```
 
 ### Financial data analasys
+
 ```{r}
 #| echo: false
 #| message: false
@@ -26,9 +28,11 @@ disp <- vroom("data/disp.csv")
 ```
 
 ## data tables
+
 A collection of joining functions of the form `*_join`
 
 ### Clear data
+
 ```{r}
 da <- inner_join(accounts, disp)
 ```
@@ -36,6 +40,7 @@ da <- inner_join(accounts, disp)
 ```{r}
 cda <- inner_join(clients, da, by=join_by(client_id), suffix = c("_home", "_bank"))
 ```
+
 ```{r}
 home_diff_bank <- cda |> filter(district_id_home != district_id_bank) |> nrow()
 ```
@@ -51,18 +56,18 @@ cda |>
 ```
 
 ### Gender gap
+
 ```{r}
 clients |> count(gender)
 ```
 
 ```{r}
-clients |>
-  ggplot(aes(y=gender)) +
-  geom_bar()
+clients |> 
+  ggplot(aes(x=gender)) + geom_bar() + coord_flip()
 ```
 
 ```{r}
-cda |>
+cda |> 
   count(gender, type) |>
   group_by(gender) |>
   mutate(freq=n/sum(n)) |>
@@ -70,5 +75,102 @@ cda |>
   ungroup() |>
   pivot_wider(values_from = freq, names_from = type)
 ```
+
+```{r}
+cda |>
+  ggplot(aes(y=gender, fill=type)) + geom_bar(position = "fill")
+```
+
+```{r}
+chisq.test(cda |> pull(gender),
+           cda |> pull(type))
+```
+
+## Loan analysis
+```{r}
+#| message: false
+loan <- vroom("data/loan.csv")
+```
+
+```{r}
+#mutate starts mutating from the first column on.
+#we have to do the modifications on the data when loading if it's a small dataset, or in a different chunk if it's big
+loan <- loan |>
+  mutate(status = factor(status, levels=c( "A", "B", "C", "D")), loan_id = as.integer(loan_id), account_id=as.integer(account_id))
+```
+
+Factor recording of `status` introduced `r loan |> filter (is.na(status)) |> nrow()` error(s)
+
+```{r}
+loan_counts <- ggplot(loan, aes(status)) +
+  geom_bar()
+loan_counts
+```
+
+```{r}
+loan |> group_by(status) |>
+  summarise(sum(amount))
+```
+
+```{r}
+ggplot(loan, aes(status, amount)) +
+  geom_boxplot()
+```
+
+```{r}
+loan_amounts <- loan |> group_by(status) |>
+  summarise("total amount" = sum(amount)) |>
+  ggplot(aes(x=status, y=`total amount`)) +
+  geom_col()
+loan_amounts
+```
+
+```{r}
+loan_counts + loan_amounts
+```
+
+```{r}
+loan_counts / loan_amounts
+```
+
+```{r}
+(loan_counts + coord_flip()) / (loan_amounts + coord_flip())
+```
+
+```{r}
+(loan |> 
+  filter(status %in% c("A", "B")) |>
+  ggplot(aes(status)) + geom_bar()) +
+(loan |> 
+  filter(status %in% c("C", "D")) |>
+  ggplot(aes(status)) + geom_bar())
+```
+
+```{r}
+loan <- loan |>
+  mutate(active=if_else(status %in% c("A", "B"), "Past", "Active"))
+```
+
+```{r}
+ggplot(loan, aes(x=status)) +
+  geom_bar() +
+  facet_wrap(~active, scales = "free")
+```
+
+```{r}
+ggplot(loan, aes(y=active, fill=status)) +
+  geom_bar()
+```
+
+```{r}
+loan <- loan |>
+  mutate(default = status %in% c("B", "D"))
+```
+
+```{r}
+ggplot(loan, aes(y=active, fill=status)) +
+  geom_bar(position="fill")
+```
+
 
 
